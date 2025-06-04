@@ -7,8 +7,8 @@ from openai import AzureOpenAI
 from streamlit_echarts import st_echarts
 
 def predict_ir_swaption(input_df):
-    with st.spinner("Calling ML Model..."):
         try:
+            input_df = input_df.applymap(lambda x: None if pd.isna(x) or x in [float("inf"), float("-inf")] else x)
             payload = {
                 "input_data": {
                     "columns": input_df.columns.tolist(),
@@ -37,10 +37,29 @@ def predict_ir_swaption(input_df):
             st.error(f"❌ Model call failed: {e}")
             return {"error": str(e)}
 
-
 # --- Mock model predictors per product ---
 def predict_bond(input_data):
-    return "Level 1"
+    try:
+        if "ISIN" not in input_data.columns:
+            return "Missing ISIN in input"
+
+        isin = input_data["ISIN"].values[0]
+        bond_df = pd.read_csv("bond_observability.csv")
+
+        # Normalize column names
+        bond_df.columns = bond_df.columns.str.strip().str.lower()
+
+        # Expect column to be named something like 'observable_level'
+        if "observable_level" not in bond_df.columns:
+            return "Column 'observable_level' not found in CSV"
+
+        match = bond_df[bond_df["isin"] == isin]
+        if not match.empty:
+            return match["observable_level"].values[0]
+        else:
+            return f"Unknown ISIN: {isin}"
+    except Exception as e:
+        return f"Error: {e}"
 
 def predict_capfloor(input_data):
     return "Level 3"
@@ -67,16 +86,12 @@ def get_secret(key, default=""):
 st.set_page_config(page_title="Augur - Fair Value Classification Model",layout="centered")
 
 st.title("Augur - Fair Value Classification Model")
-st.markdown("""
-We leverage advanced machine learning techniques to predict the **fair value classification of financial instruments** in accordance with **IFRS 13** guidelines. 
-Model prediction is grounded with observability-based risk assessments and analytical review for robust internal validation and reporting.
-> ⚠️ **Responsible AI notice**: This model is intended for **internal reporting and review **. Model predictions should be complemented with expert judgment for external disclosures.
-""")
+
 # --- Workflow 
-single_tab, batch_tab, rationale_tab = st.tabs(["Trade Inference", "Batch Inference", "Analytical Review"])
+single_tab, batch_tab = st.tabs(["Predict Fair value Level for a Single trade", "Batch Prediction" ])
 
 with single_tab:
-    st.subheader("Predict Fair Value Classification for a Single trade")
+    st.subheader("Predict Fair Value Classification using Machine Learning Model")
     with st.sidebar:
         st.markdown("### Trade Details")
         product_type = st.selectbox("Product Type", ["IR Swaption", "Bond", "CapFloor", "IRSwap"], index=0)
@@ -98,8 +113,25 @@ with single_tab:
             rating = st.selectbox("Credit Rating", ["AAA", "AA", "A", "BBB", "BB", "B"])
             issuer_type = st.selectbox("Issuer Type", ["Government", "Corporate"])
 
+            # Load ISIN list from CSV
+            try:
+                bond_obs_df = pd.read_csv("bond_observability.csv")
+                isin_list = bond_obs_df["ISIN"].dropna().unique().tolist()
+                isin = st.selectbox("ISIN", isin_list)
+            except Exception as e:
+                isin = st.text_input("ISIN (CSV load failed, enter manually)", "")
+                st.error(f"Could not load ISIN list: {e}")
+
+            # trade_inputs.update({
+            #     "rating": rating,
+            #     "issuer_type": issuer_type,
+            #     "ISIN": isin
+            # })
+
+
         trade_inputs = {
             "product_type": product_type,
+            "ISIN": isin if product_type == "Bond" else "",
             "currency": currency,
             "notional": notional,
             "option_type": option_type,
@@ -130,16 +162,31 @@ with single_tab:
 
             with st.expander("Model Details", expanded=False):
                 st.markdown(f"⏱️ Model run completed in {st.session_state['ML_Model_elapsed_time']} seconds")
-                st.markdown("""
-                    <div style='text-align: left; padding: 10px; background-color: #eeeeee; border-radius: 8px; color: #000000; font-family: monospace; font-size: 14px;'>
-                    <strong>Model:</strong> Gradient Boosting (AutoML)<br>
-                    <strong>Version:</strong> Gradient Boosting (AutoML)<br>
-                    <strong>Trained on:</strong> Synthetic IR Swaption Trades<br>
-                    <strong>Features:</strong> product_type, currency, option_type, notional, strike, expiry_tenor, maturity_tenor<br>
-                    <strong>Accuracy:</strong> 86.2%<br>
-                    <strong>AUC:</strong> 0.74<br>
-                    </div>
+
+                if st.session_state.get("product_type") == "Bond":
+                    st.markdown("""
+                        <div style='text-align: left; padding: 10px; background-color: #eeeeee; border-radius: 8px; color: #000000; font-family: monospace; font-size: 14px;'>
+                        <strong>Model:</strong> ISIN Lookup based Classification<br>
+                        <strong>Version:</strong> Bond Market Observability (Static Lookup)<br>
+                        <strong>Method:</strong> Classification based on Observable Market Inputs (ISIN)<br>
+                        <strong>Source:</strong> bond_observability.csv<br>
+                        <strong>Features:</strong> ISIN<br>
+                        <strong>Description:</strong> Predicted Fair Value Level for traded bonds using Market Observability derived from listed ISIN and its classification.<br>
+                        </div>
                     """, unsafe_allow_html=True)
+
+                else:
+                    st.markdown("""
+                        <div style='text-align: left; padding: 10px; background-color: #eeeeee; border-radius: 8px; color: #000000; font-family: monospace; font-size: 14px;'>
+                        <strong>Model:</strong> Gradient Boosting (AutoML)<br>
+                        <strong>Version:</strong> Gradient Boosting (AutoML)<br>
+                        <strong>Trained on:</strong> Synthetic IR Swaption Trades<br>
+                        <strong>Features:</strong> product_type, currency, option_type, notional, strike, expiry_tenor, maturity_tenor<br>
+                        <strong>Accuracy:</strong> 86.2%<br>
+                        <strong>AUC:</strong> 0.74<br>
+                        </div>
+                    """, unsafe_allow_html=True)
+                      
                 
             st.success(f"✅ Predicted Fair Value Classification: {result}")
             st.markdown("""
@@ -159,7 +206,8 @@ with batch_tab:
     uploaded_file = st.file_uploader("Upload CSV", type="csv", key="batch")
     if uploaded_file:
         df_infer = pd.read_csv(uploaded_file)
-        required_cols = ["product_type", "currency", "option_type", "notional", "strike", "expiry_tenor", "maturity_tenor"]
+        required_cols = ["product_type", "currency", "option_type", "notional", "strike", "expiry_tenor", "maturity_tenor", "ISIN"]
+
         if all(col in df_infer.columns for col in required_cols):
             with st.spinner("Running batch inference..."):
                 try:
@@ -175,12 +223,13 @@ with batch_tab:
         else:
             st.warning(f"CSV must include columns: {', '.join(required_cols)}")
 
-                    # --- Development-only Visualization ---
+                   # --- Development-only Visualization ---
         if "trading_desk" in df_infer.columns:
                         heatmap_data = df_infer.groupby(["trading_desk", "Predicted IFRS13 Level"]).size().reset_index(name="count")
                         rows = heatmap_data["trading_desk"].unique().tolist()
-                        cols = heatmap_data["Predicted IFRS13 Level"].unique().tolist()
-
+                        cols = ["Level 1", "Level 2", "Level 3"]
+                        df_infer = df_infer[df_infer["Predicted IFRS13 Level"].isin(cols)]
+                        
                         row_map = {v: i for i, v in enumerate(rows)}
                         col_map = {v: i for i, v in enumerate(cols)}
 
@@ -188,7 +237,7 @@ with batch_tab:
 
                         option = {
                             "tooltip": {"position": "top"},
-                            "grid": {"height": "50%", "top": "10%"},
+                            "grid": {"height": "50%", "top": "10%", "left": "30%"},
                             "xAxis": {"type": "category", "data": cols, "splitArea": {"show": True}},
                             "yAxis": {"type": "category", "data": rows, "splitArea": {"show": True}},
                             "visualMap": {
@@ -216,37 +265,76 @@ with batch_tab:
                         st_echarts(option, height="400px")
         else:
                     st.warning(f"CSV must include columns: {', '.join(required_cols)}")
+        
+        if "product_type" in df_infer.columns and "Predicted IFRS13 Level" in df_infer.columns:
+            heatmap_data_prod = df_infer.groupby(["product_type", "Predicted IFRS13 Level"]).size().reset_index(name="count")
+            rows = heatmap_data_prod["product_type"].unique().tolist()
+            cols = heatmap_data_prod["Predicted IFRS13 Level"].unique().tolist()
+
+            row_map = {v: i for i, v in enumerate(rows)}
+            col_map = {v: i for i, v in enumerate(cols)}
+
+            data = [[col_map[c], row_map[r], int(v)] for r, c, v in heatmap_data_prod.values]
+
+            option_prod = {
+                "tooltip": {"position": "top"},
+                "grid": {"height": "50%", "top": "10%", "left": "30%"},
+                "xAxis": {"type": "category", "data": cols, "splitArea": {"show": True}},
+                "yAxis": {"type": "category", "data": rows, "splitArea": {"show": True}},
+                "visualMap": {
+                    "min": 0,
+                    "max": max(heatmap_data_prod["count"]),
+                    "calculable": True,
+                    "orient": "horizontal",
+                    "left": "center",
+                    "bottom": "15%",
+                },
+                "series": [
+                    {
+                        "name": "Trade Count",
+                        "type": "heatmap",
+                        "data": data,
+                        "label": {"show": True},
+                        "emphasis": {
+                            "itemStyle": {"shadowBlur": 10, "shadowColor": "rgba(0, 0, 0, 0.5)"}
+                        },
+                    }
+                ],
+            }
+
+            st.subheader("Heatmap: Predicted Fair Value Level by Product Type")
+            st_echarts(option_prod, height="400px")
 
 
-with rationale_tab:
-    st.subheader("Analytical review")
-    if st.button("Run GPT-4o Rationale"):
-        if all(k in st.session_state for k in ["ir_summary", "vol_summary", "model_pred"]):
-            st.session_state["rat_done"] = True
-            client = AzureOpenAI(
-                api_key=get_secret("AZURE_OPENAI_API_KEY"),
-                api_version="2024-02-01",
-                azure_endpoint=get_secret("AZURE_OPENAI_ENDPOINT")
-            )
-            messages = [
-                {"role": "system", "content": "You're a financial analyst..."},
-                {"role": "user", "content": (
-                    f"IR Delta Summary:\n{st.session_state['ir_summary']}\n\n"
-                    f"Vol Summary:\n{st.session_state['vol_summary']}\n\n"
-                    f"Model Prediction: {st.session_state['model_pred']}\n"
-                    "Explain and confirm IFRS13 classification with confidence score."
-                )}
-            ]
-            response = client.chat.completions.create(
-                model=get_secret("AZURE_OPENAI_MODEL"),
-                messages=messages,
-                temperature=0.5
-            )
-            st.session_state["rationale_text"] = response.choices[0].message.content
-            st.rerun()
-        else:
-            st.warning("⚠️ Ensure both model inference and risk summaries are completed.")
+# with rationale_tab:
+#     st.subheader("Analytical review")
+#     if st.button("Run GPT-4o Rationale"):
+#         if all(k in st.session_state for k in ["ir_summary", "vol_summary", "model_pred"]):
+#             st.session_state["rat_done"] = True
+#             client = AzureOpenAI(
+#                 api_key=get_secret("AZURE_OPENAI_API_KEY"),
+#                 api_version="2024-02-01",
+#                 azure_endpoint=get_secret("AZURE_OPENAI_ENDPOINT")
+#             )
+#             messages = [
+#                 {"role": "system", "content": "You're a financial analyst..."},
+#                 {"role": "user", "content": (
+#                     f"IR Delta Summary:\n{st.session_state['ir_summary']}\n\n"
+#                     f"Vol Summary:\n{st.session_state['vol_summary']}\n\n"
+#                     f"Model Prediction: {st.session_state['model_pred']}\n"
+#                     "Explain and confirm IFRS13 classification with confidence score."
+#                 )}
+#             ]
+#             response = client.chat.completions.create(
+#                 model=get_secret("AZURE_OPENAI_MODEL"),
+#                 messages=messages,
+#                 temperature=0.5
+#             )
+#             st.session_state["rationale_text"] = response.choices[0].message.content
+#             st.rerun()
+#         else:
+#             st.warning("⚠️ Ensure both model inference and risk summaries are completed.")
 
-    if "rationale_text" in st.session_state:
-        st.success("✅ Rationale Generated")
-        st.markdown(f"**Explanation:**\n\n{st.session_state['rationale_text']}")
+#     if "rationale_text" in st.session_state:
+#         st.success("✅ Rationale Generated")
+#         st.markdown(f"**Explanation:**\n\n{st.session_state['rationale_text']}")

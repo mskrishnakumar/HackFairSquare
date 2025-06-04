@@ -3,14 +3,19 @@ from datetime import date
 
 st.set_page_config(page_title="Welcome to IFRS13 Classification model", layout="wide")
 st.sidebar.markdown("""
-### IFRS13 Classification Workflow
+### Re-imagine Hackathon 2025
+### Team: Fair & Square
 
-Navigate through:
-- **Model Inference**
-- **Risk Factor Testing**
-- **Rationale Explanation**
+- **Arun Prakash Aravindan**  
+- **Hemanth Gunturu**  
+- **Jagadeesh Rajagopalan**  
+- **Jeevana Vegi**  
+- **Khyati Mehta**  
+- **Krishna Subramanian**  
+- **Sreya Gorrepati**  
+- **Sruthi Murali** 
+                   
 
-Use the sidebar to choose a module.
 """)
 
 st.markdown("""
@@ -31,22 +36,28 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+st.title("Augur - Fair Value Classification Model")
 st.markdown("""
-<div class="big-title"> Welcome to the IFRS13 Fair Value Classification Appplication</div>
-<div class="subtitle">A modular, explainable, and friendly classification tool - To be raplced tomo</div>
+Transforming Financial reporting & Fair Value classification process leveraging the power of Data, Artificial Intelligence & Machine learning. 
+
+Augur predicts fair value classification levels using machine learning, reinforced by risk observability checks and analytical review for reliable, explainable outcomes.</div>
 """, unsafe_allow_html=True)
 
-st.info("Use the navigation on the left sidebar to begin.")
 
 st.markdown("""
 ---
-### 📌 Key Features:
+### Our Solution will transform IFRS13 Fair Value Classification process to be:
+            
+### <span style='color:#1E90FF;'> Simpler </span>
+- **Reduce Operational complexity:** Streamlines the IFRS13 Fair value classification process significantly reducing manual work involved.
 
-- **Modular Design:** Split workflows for Model Inference, Observability, and Rationale
-- **Regulatory Focus:** Built for IFRS13 compliance scenarios
-- **Explainable AI:** Combines ML models and GPT rationale
-- **Azure-native:** Integrates with Azure ML & OpenAI services
+### <span style='color:#1E90FF;'> Better </span>
+                 
+- **Real time Financial insights:** Predict fair value classification in real-time, enabling Finance to inform business strategy.
+- **Leverage our Data super-power:** Use our historical data to predict fair value classification.
+- **Early warning of risk concentration:** Enables identification of potential risk concentrations.
 
----
-📅 Today's Date: **{}**
-""".format(date.today().strftime("%d %b %Y")))
+### <span style='color:#1E90FF;'> More balanced </span>
+- **Control Focus:** Built-in Guardrails for IFRS13 compliance with risk observability grounding before external & regulatory reporting.
+-**Scalable:** Scalable model to absorb regulatory updates ensuring transparency and trust in financial reporting.            
+""", unsafe_allow_html=True)
