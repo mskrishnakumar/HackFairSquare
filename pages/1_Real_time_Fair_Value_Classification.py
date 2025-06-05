@@ -80,7 +80,10 @@ def predict_by_product(product_type, input_data):
         return "Unknown"
 
 def get_secret(key, default=""):
-    return os.getenv(key, st.secrets.get(key, default))
+    try:
+        return os.getenv(key) or st.secrets.get(key, default)
+    except Exception:
+        return default
 
 # --- Streamlit App Layout ---
 st.set_page_config(page_title="Augur - Fair Value Classification Model",layout="centered")
