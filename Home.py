@@ -59,5 +59,23 @@ st.markdown("""
 
 ### <span style='color:#1E90FF;'> More balanced </span>
 - **Control Focus:** Built-in Guardrails for IFRS13 compliance with risk observability grounding before external & regulatory reporting.
--**Scalable:** Scalable model to absorb regulatory updates ensuring transparency and trust in financial reporting.            
+- **Scalable:** Scalable model to absorb regulatory updates ensuring transparency and trust in financial reporting.            
+""", unsafe_allow_html=True)
+
+st.markdown("""
+---
+### As part of the Reimagined Hackathon 2025, we have built
+
+### <span style='color:#1E90FF;'> Augur - Deployed Machine learning classification Model (Random Forest) </span>
+- ** We built a machine learning model in Azure ML studio using No/Low code solution that predicts fair value classification levels, significantly reducing manual work involved in the IFRS13 Fair Value classification process.
+
+ ### <span style='color:#1E90FF;'> Automated Risk Factor Observability Testing for 2 use cases </span>
+- ** We built a risk factor observability testing solution that automates the risk factor observability testing for 2 use cases, significantly reducing manual work involved in the IFRS13 Fair Value classification process.
+
+### <span style='color:#1E90FF;'> Integration with Azure Open AI Models to explain classification rationale </span>
+- ** We built an integration with Azure Open AI Models to explain the classification rationale, significantly reducing manual work involved in the IFRS13 Fair Value classification process.
+
+### <span style='color:#1E90FF;'> Built a Streamlit UI to demo the solution </span>
+- ** We built a Streamlit UI to demo the solution
+ 
 """, unsafe_allow_html=True)

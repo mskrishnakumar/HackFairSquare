@@ -17,7 +17,7 @@ col1.metric("Model Predicted Level", model_level)
 col2.metric("Risk Factor Observability Level", rf_level)
 col3.metric("Final Adjusted Level", final_level)
 
-if st.button("Explain Model Prediction Rationale using GPT4o"):
+if st.button("Explain Model Prediction Rationale using LLM"):
     if all(k in st.session_state for k in ["ir_summary", "vol_summary", "model_pred"]):
         st.session_state["rat_done"] = True
 
