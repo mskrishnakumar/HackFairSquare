@@ -8,15 +8,30 @@ st.title("Analytical Review")
 
 st.subheader("Rationale Explanation Based on Model Prediction & Risk Factors")
 
-if st.button("Explain Rationale using GPT model"):
+model_level = st.session_state.get("model_pred", "N/A")
+rf_level = st.session_state.get("rf_level", "N/A")
+final_level = st.session_state.get("final_level", "N/A")
+
+col1, col2, col3 = st.columns(3)
+col1.metric("Model Predicted Level", model_level)
+col2.metric("Risk Factor Observability Level", rf_level)
+col3.metric("Final Adjusted Level", final_level)
+
+if st.button("Explain Model Prediction Rationale using GPT4o"):
     if all(k in st.session_state for k in ["ir_summary", "vol_summary", "model_pred"]):
         st.session_state["rat_done"] = True
 
-        client = AzureOpenAI(
-            api_key=os.getenv("AZURE_OPENAI_API_KEY", st.secrets.get("AZURE_OPENAI_API_KEY")),
-            api_version="2024-02-01",
-            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT", st.secrets.get("AZURE_OPENAI_ENDPOINT"))
-        )
+        api_key = os.getenv("AZURE_OPENAI_API_KEY") or st.secrets.get("AZURE_OPENAI_API_KEY", None)
+        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT") or st.secrets.get("AZURE_OPENAI_ENDPOINT", None)
+
+        if not api_key or not endpoint:
+            st.error("❌ OpenAI credentials are missing. Please check environment variables or Streamlit secrets.")
+        else:
+            client = AzureOpenAI(
+                api_key=api_key,
+                api_version="2024-02-01",
+                azure_endpoint=endpoint
+            )
 
         messages = [
             {"role": "system", "content": "You are a financial analyst. Provide a brief, clear explanation of the model's IFRS13 classification based on the following inputs."},
@@ -24,7 +39,10 @@ if st.button("Explain Rationale using GPT model"):
                 f"IR Delta Summary:\n{st.session_state['ir_summary']}\n\n"
                 f"Vol Summary:\n{st.session_state['vol_summary']}\n\n"
                 f"Model Prediction: {st.session_state['model_pred']}\n"
-                "Provide a short rationale (2-3 lines) confirming or questioning the classification. Include confidence level."
+                f"Risk Factor Observability Level: {st.session_state['rf_level']}\n"
+                f"Final Level: {st.session_state['final_level']}\n"
+                f"Provide a short rationale (3-4 lines) on key drivers behind the classification.\n"
+                f"Include confidence level. Clearly state if Risk Fator Observability is different from Model Prediction and Justify Final Level."
             )}
         ]
 
@@ -43,9 +61,46 @@ if "rationale_text" in st.session_state:
     st.success("✅ Rationale Generated")
     st.markdown(f"**Explanation:**\n\n{st.session_state['rationale_text']}\n")
 
+# --- IFRS13 Expert Section ---
+st.markdown("---------------------------------------------------------------------------------------------------")
+st.header("IFRS13 Expert Assistant")
+st.markdown("Ask any question about IFRS 13 fair value classification standards:")
+
+user_question = st.text_area("Enter your question below:", placeholder="e.g., What is the US GAAP equivalent of IFRS13?")
+
+if st.button("Ask IFRS13 Expert"):
+    if user_question.strip():
+        api_key = os.getenv("AZURE_OPENAI_API_KEY") or st.secrets.get("AZURE_OPENAI_API_KEY", None)
+        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT") or st.secrets.get("AZURE_OPENAI_ENDPOINT", None)
+
+        if not api_key or not endpoint:
+            st.error("❌ OpenAI credentials are missing.")
+        else:
+            client = AzureOpenAI(
+                api_key=api_key,
+                api_version="2024-02-01",
+                azure_endpoint=endpoint
+            )
+
+            expert_messages = [
+                {"role": "system", "content": "You are a highly knowledgeable IFRS13 financial reporting expert. Explain user questions with clarity and brevity."},
+                {"role": "user", "content": user_question}
+            ]
+
+            response = client.chat.completions.create(
+                model=os.getenv("AZURE_OPENAI_MODEL", st.secrets.get("AZURE_OPENAI_MODEL")),
+                messages=expert_messages,
+                temperature=0.2
+            )
+
+            st.success("✅ Expert Response")
+            st.markdown(f"**Answer:**\n\n{response.choices[0].message.content}")
+    else:
+        st.warning("⚠️ Please enter a question to continue.")
+
 # --- Movement Over Time Section ---
 st.markdown("---------------------------------------------------------------------------------------------------")
-st.header("📈 Movement Over Time (MoT) Analysis")
+st.header("Movement Over Time (MoT) Analysis")
 
 def perform_mot_analysis(df_dec, df_mar):
     df_compare = pd.merge(df_dec, df_mar, on="trade_id", suffixes=("_dec", "_mar"))

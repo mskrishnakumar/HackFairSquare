@@ -55,7 +55,7 @@ if st.button("Ground with Risk Factor Observability"):
     total_stress_pv = ir_stress_pv + vol_stress_pv
     rf_level = "Level 3" if total_stress_pv > 0.1 * trade["trade_pv"] else "Level 2"
 
-    final_level = rf_level  # You can later extend this logic if you apply further adjustments
+    final_level = rf_level  #extend this logic for further adjustments
 
     st.session_state.update({
         "greeks": greeks,
