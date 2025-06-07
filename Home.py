@@ -13,9 +13,7 @@ st.sidebar.markdown("""
 - **Khyati Mehta**  
 - **Krishna Subramanian**  
 - **Sreya Gorrepati**  
-- **Sruthi Murali** 
-                   
-
+- **Sruthi Murali**        
 """)
 
 st.markdown("""
